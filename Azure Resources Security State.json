@@ -1,0 +1,565 @@
+{
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workbookDisplayName": {
+      "type": "string",
+      "defaultValue": "Azure Resources Security State",
+      "metadata": {
+        "description": "The friendly name for the workbook that is used in the Gallery or Saved List.  This name must be unique within a resource group."
+      }
+    },
+    "workbookType": {
+      "type": "string",
+      "defaultValue": "workbook",
+      "metadata": {
+        "description": "The gallery that the workbook will been shown under. Supported values include workbook, tsg, etc. Usually, this is 'workbook'"
+      }
+    },
+    "workbookSourceId": {
+      "type": "string",
+      "defaultValue": "Azure Security Center",
+      "metadata": {
+        "description": "The id of resource instance to which the workbook will be associated"
+      }
+    },
+    "workbookId": {
+      "type": "string",
+      "defaultValue": "[newGuid()]",
+      "metadata": {
+        "description": "The unique guid for this workbook instance"
+      }
+    }
+  },
+  "variables": {
+    "workbookContent": {
+      "version": "Notebook/1.0",
+      "items": [
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "Resources\r\n| where type =~ 'microsoft.storage/storageaccounts'\r\n| extend\r\n\tResource_name = id,\r\n\tHTTPS_Only = properties.supportsHttpsTrafficOnly,\r\n\tAnonymous_Access = properties.allowBlobPublicAccess,\r\n\tInternet_Access = properties.networkAcls.defaultAction,\r\n\tNetwork_Policy = properties.networkAcls.ipRules,\r\n    Subscription = subscriptionId,\r\n    Minimum_TLS_Version = properties.minimumTlsVersion\r\n\r\n| join kind=inner (\r\n\tResourceContainers\r\n\t| where type =~ 'microsoft.resources/subscriptions/resourcegroups'\r\n\t| extend\r\n\t\tResource_Group = id\r\n\t| project subscriptionId, resourceGroup,Resource_Group)\r\non subscriptionId, resourceGroup\r\n| join kind=inner (\r\n\tSecurityResources\r\n    | where type == 'microsoft.security/assessments'\r\n    | where properties.displayName == 'Microsoft Defender for Storage should be enabled'\r\n    | extend \r\n        subscriptionId = substring(properties.resourceDetails.Id, 15),\r\n        Defender_Status = properties.status.code\r\n    | project subscriptionId,Defender_Status)\r\non subscriptionId\r\n| project Resource_name,Anonymous_Access,Internet_Access,HTTPS_Only,Minimum_TLS_Version,Defender_Status,type,Resource_Group,Subscription,Network_Policy",
+            "size": 0,
+            "title": "Storage Accounts Security State",
+            "showExportToExcel": true,
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "value::all"
+            ],
+            "gridSettings": {
+              "formatters": [
+                {
+                  "columnMatch": "Resource_name",
+                  "formatter": 13,
+                  "formatOptions": {
+                    "linkTarget": "Resource",
+                    "linkIsContextBlade": true,
+                    "showIcon": true,
+                    "bladeOpenContext": {
+                      "bladeParameters": []
+                    }
+                  }
+                },
+                {
+                  "columnMatch": "Anonymous_Access",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "false",
+                        "representation": "success",
+                        "text": "Good"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "true",
+                        "representation": "4",
+                        "text": "Bad"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  },
+                  "tooltipFormat": {
+                    "tooltip": "Open Storage Account -> Settings -> Configuration -> Allow Blob Public Access -> Disabled"
+                  }
+                },
+                {
+                  "columnMatch": "Internet_Access",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Allow",
+                        "representation": "4",
+                        "text": "Bad"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Deny",
+                        "representation": "success",
+                        "text": "Good"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  },
+                  "tooltipFormat": {
+                    "tooltip": "Open Storage Account -> Security & Networking -> Networking ->  Public network access -> Enabled from selected virtual networks and IP addresses OR Disabled"
+                  }
+                },
+                {
+                  "columnMatch": "HTTPS_Only",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "true",
+                        "representation": "success",
+                        "text": "Good"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "false",
+                        "representation": "4",
+                        "text": "Bad"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  },
+                  "tooltipFormat": {
+                    "tooltip": "Open Storage Account -> Settings -> Configuration -> Secure transfer required -> Enabled"
+                  }
+                },
+                {
+                  "columnMatch": "Minimum_TLS_Version",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "TLS1_2",
+                        "representation": "success",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "TLS1_1",
+                        "representation": "4",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "TLS1_0",
+                        "representation": "4",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "TLS1_3",
+                        "representation": "success",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": ""
+                      }
+                    ]
+                  },
+                  "tooltipFormat": {
+                    "tooltip": "Open Storage Account -> Settings -> Configuration -> Minimum TLS Version -> TLS1_2"
+                  }
+                },
+                {
+                  "columnMatch": "Defender_Status",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Healthy",
+                        "representation": "success",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Unhealthy",
+                        "representation": "4",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "NotApplicable",
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "columnMatch": "type",
+                  "formatter": 16,
+                  "formatOptions": {
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "Resource_Group",
+                  "formatter": 14,
+                  "formatOptions": {
+                    "linkTarget": null,
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "Subscription",
+                  "formatter": 15,
+                  "formatOptions": {
+                    "linkTarget": null,
+                    "showIcon": true
+                  }
+                }
+              ]
+            },
+            "tileSettings": {
+              "showBorder": false
+            }
+          },
+          "name": "query - 0"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "Resources\r\n| where type =~ 'microsoft.keyvault/vaults'\r\n| extend\r\n    Resource_Name = id,\r\n    Internet_Access = properties.networkAcls.defaultAction,\r\n    Soft_Delete = properties.enableSoftDelete,\r\n    Purge_Protection = properties.enablePurgeProtection\r\n| join kind=inner (\r\n\tResourceContainers\r\n\t| where type =~ 'microsoft.resources/subscriptions/resourcegroups'\r\n\t| extend\r\n\t\tResource_Group = id\r\n\t| project subscriptionId, resourceGroup,Resource_Group)\r\non subscriptionId, resourceGroup\r\n| join kind=inner (\r\n\tSecurityResources\r\n    | where type == 'microsoft.security/assessments'\r\n    | where properties.displayName == 'Microsoft Defender for Key Vault should be enabled'\r\n    | extend \r\n        subscriptionId = substring(properties.resourceDetails.Id, 15),\r\n        Defender_Status = properties.status.code\r\n    | project subscriptionId,Defender_Status)\r\non subscriptionId\r\n| project Resource_Name,Internet_Access,Soft_Delete,Purge_Protection,Defender_Status,type,Resource_Group,subscriptionId,properties",
+            "size": 0,
+            "title": "Key Vaults Security State",
+            "showExportToExcel": true,
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "value::all"
+            ],
+            "gridSettings": {
+              "formatters": [
+                {
+                  "columnMatch": "Resource_Name",
+                  "formatter": 13,
+                  "formatOptions": {
+                    "linkTarget": "Resource",
+                    "linkIsContextBlade": true,
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "Internet_Access",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Deny",
+                        "representation": "success",
+                        "text": "Good"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "4",
+                        "text": "Bad"
+                      }
+                    ]
+                  },
+                  "tooltipFormat": {
+                    "tooltip": "Open Key Vault -> Settings -> Networking -> Allow Access From -> Selected Networks"
+                  }
+                },
+                {
+                  "columnMatch": "Soft_Delete",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "true",
+                        "representation": "success",
+                        "text": "Good"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "false",
+                        "representation": "4",
+                        "text": "Bad"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  },
+                  "tooltipFormat": {
+                    "tooltip": "Open Key Vault -> Settings -> Properties -> Soft-Delete -> Enable"
+                  }
+                },
+                {
+                  "columnMatch": "Purge_Protection",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "true",
+                        "representation": "success",
+                        "text": "Good"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "false",
+                        "representation": "4",
+                        "text": "Bad"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  },
+                  "tooltipFormat": {
+                    "tooltip": "Open Key Vault -> Settings -> Properties -> Purge Protection -> Enable purge protection"
+                  }
+                },
+                {
+                  "columnMatch": "Defender_Status",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Healthy",
+                        "representation": "success",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Unhealthy",
+                        "representation": "4",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "NotApplicable",
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "columnMatch": "type",
+                  "formatter": 16,
+                  "formatOptions": {
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "Resource_Group",
+                  "formatter": 14,
+                  "formatOptions": {
+                    "linkTarget": null,
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "subscriptionId",
+                  "formatter": 15,
+                  "formatOptions": {
+                    "linkTarget": null,
+                    "showIcon": true
+                  }
+                }
+              ]
+            }
+          },
+          "name": "query - 2"
+        },
+        {
+          "type": 3,
+          "content": {
+            "version": "KqlItem/1.0",
+            "query": "resources\r\n| where type == \"microsoft.compute/virtualmachines\"\r\n| extend \r\n    Resource_Name = id,\r\n    Encrypted_At_Host = properties.securityProfile.encryptionAtHost\r\n| join kind=inner (\r\n    SecurityResources\r\n    | where type == 'microsoft.security/assessments'\r\n    | where properties.displayName == 'Microsoft Defender for servers should be enabled'\r\n    | extend \r\n        subscriptionId = substring(properties.resourceDetails.Id, 15),\r\n        Defender_For_Servers = properties.status.code\r\n    | project subscriptionId,Defender_For_Servers)\r\non subscriptionId\r\n| join kind=inner (\r\n\tResourceContainers\r\n\t| where type =~ 'microsoft.resources/subscriptions/resourcegroups'\r\n\t| extend\r\n\t\tResource_Group = id\r\n\t| project subscriptionId, resourceGroup,Resource_Group)\r\non subscriptionId, resourceGroup\r\n| project Resource_Name,Encrypted_At_Host,Defender_For_Servers,type,Resource_Group,subscriptionId",
+            "size": 0,
+            "title": "Virtual Machines Security State",
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "crossComponentResources": [
+              "value::all"
+            ],
+            "gridSettings": {
+              "formatters": [
+                {
+                  "columnMatch": "Resource_Name",
+                  "formatter": 13,
+                  "formatOptions": {
+                    "linkTarget": "Resource",
+                    "linkIsContextBlade": true,
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "Encrypted_At_Host",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "true",
+                        "representation": "success",
+                        "text": "Good"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "false",
+                        "representation": "4",
+                        "text": "Bad"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "columnMatch": "Defender_For_Servers",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "icons",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Healthy",
+                        "representation": "success",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "==",
+                        "thresholdValue": "Unhealthy",
+                        "representation": "4",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "1",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "columnMatch": "type",
+                  "formatter": 16,
+                  "formatOptions": {
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "Resource_Group",
+                  "formatter": 14,
+                  "formatOptions": {
+                    "linkTarget": null,
+                    "showIcon": true
+                  }
+                },
+                {
+                  "columnMatch": "subscriptionId",
+                  "formatter": 15,
+                  "formatOptions": {
+                    "linkTarget": null,
+                    "showIcon": true
+                  }
+                }
+              ]
+            }
+          },
+          "name": "query - 2"
+        }
+      ],
+      "isLocked": false,
+      "fallbackResourceIds": [
+        "Azure Security Center"
+      ]
+    }
+  },
+  "resources": [
+    {
+      "name": "[parameters('workbookId')]",
+      "type": "microsoft.insights/workbooks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2021-03-08",
+      "dependsOn": [],
+      "kind": "shared",
+      "properties": {
+        "displayName": "[parameters('workbookDisplayName')]",
+        "serializedData": "[string(variables('workbookContent'))]",
+        "version": "1.0",
+        "sourceId": "[parameters('workbookSourceId')]",
+        "category": "[parameters('workbookType')]"
+      }
+    }
+  ],
+  "outputs": {
+    "workbookId": {
+      "type": "string",
+      "value": "[resourceId( 'microsoft.insights/workbooks', parameters('workbookId'))]"
+    }
+  },
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#"
+}
