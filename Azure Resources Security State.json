@@ -471,7 +471,7 @@
                         "operator": "Default",
                         "thresholdValue": null,
                         "representation": "1",
-                        "text": "{0}{1}"
+                        "text": "N/A"
                       }
                     ]
                   }
